@@ -1,0 +1,225 @@
+// Prisma Schema for HackScore AI
+// Configured with SQLite default for immediate zero-config local run,
+// switchable to PostgreSQL via DATABASE_URL environment variable.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  name      String?
+  role      String    @default("PARTICIPANT") // PARTICIPANT or JUDGE
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  projects  Project[]
+  feedbacks JudgeFeedback[]
+}
+
+model Team {
+  id          String    @id @default(cuid())
+  name        String
+  members     String    // JSON string array of member names
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  projects    Project[]
+}
+
+model Project {
+  id              String         @id @default(cuid())
+  userId          String?
+  teamId          String?
+  name            String
+  tagline         String?
+  category        String
+  hackathonName   String
+  hackathonTheme  String?
+  problemStatement String
+  targetUsers     String?
+  description     String
+  
+  // Links
+  githubUrl       String?
+  liveUrl         String?
+  videoUrl        String?
+  figmaUrl        String?
+  presentationUrl String?
+  
+  // Tech stack
+  frontendTech    String?
+  backendTech     String?
+  databaseTech    String?
+  apisTech        String?
+  aiModelsTech    String?
+  cloudTech       String?
+  authTech        String?
+  integrationsTech String?
+  
+  // Artifacts
+  screenshots     String?        // JSON string of URLs / base64
+  architectureDiagram String?
+  pitchDoc        String?
+  
+  // Active Rubric
+  rubricId        String?
+  rubric          Rubric?        @relation(fields: [rubricId], references: [id])
+  
+  version         Int            @default(1)
+  status          String         @default("EVALUATED") // DRAFT, ANALYZING, EVALUATED
+  
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  
+  user            User?          @relation(fields: [userId], references: [id])
+  team            Team?          @relation(fields: [teamId], references: [id])
+  evaluations     Evaluation[]
+  pitches         Pitch[]
+  presentations   Presentation[]
+  judgeFeedbacks  JudgeFeedback[]
+  history         AnalysisHistory[]
+}
+
+model Rubric {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  isDefault   Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  criteria    Criterion[]
+  projects    Project[]
+  evaluations Evaluation[]
+}
+
+model Criterion {
+  id          String   @id @default(cuid())
+  rubricId    String
+  name        String   // Innovation, Technical, UI/UX, etc.
+  weight      Float    // Maximum points or percentage
+  description String?
+  rubric      Rubric   @relation(fields: [rubricId], references: [id], onDelete: Cascade)
+}
+
+model Evaluation {
+  id              String            @id @default(cuid())
+  projectId       String
+  rubricId        String?
+  overallScore    Float
+  readinessLevel  String            // Needs Significant Improvement, Developing, Strong Foundation, Judge Ready
+  summary         String
+  
+  strengths       String            // JSON string array
+  weaknesses      String            // JSON string array
+  quickWins       String            // JSON string array
+  
+  technicalAudit  String?           // JSON string of TechnicalAudit details
+  uiAudit         String?           // JSON string of UIAudit details
+  ideaAudit       String?           // JSON string of IdeaAnalysis details
+  judgeObjections String?           // JSON string of JudgeChallenge questions
+  
+  createdAt       DateTime          @default(now())
+  
+  project         Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  rubric          Rubric?           @relation(fields: [rubricId], references: [id])
+  scores          Score[]
+  recommendations Recommendation[]
+}
+
+model Score {
+  id            String     @id @default(cuid())
+  evaluationId  String
+  category      String
+  score         Float
+  maxScore      Float
+  explanation   String?
+  evidence      String?
+  problems      String?    // JSON string array
+  actions       String?    // JSON string array
+  potentialScore Float?
+  
+  evaluation    Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+}
+
+model Recommendation {
+  id            String     @id @default(cuid())
+  evaluationId  String
+  title         String
+  priority      String     // CRITICAL, HIGH, MEDIUM, QUICK_WIN
+  problem       String
+  action        String
+  expectedImpact String    // High, Medium-High, Medium, Low
+  isCompleted   Boolean    @default(false)
+  
+  evaluation    Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+}
+
+model Pitch {
+  id            String   @id @default(cuid())
+  projectId     String
+  duration      String   // 30s, 60s, 3m, 5m
+  tone          String   // Professional, Emotional, Technical, Startup-style, Storytelling, Judge-focused
+  content       String   // Full script
+  breakdown     String?  // JSON string of structured pitch sections
+  createdAt     DateTime @default(now())
+  
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Presentation {
+  id            String   @id @default(cuid())
+  projectId     String
+  score         Float
+  strengths     String   // JSON string array
+  weaknesses    String   // JSON string array
+  slideDensity  String?
+  visualClarity String?
+  demoFlow      String?
+  suggestions   String?  // JSON string array
+  createdAt     DateTime @default(now())
+  
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Judge {
+  id          String          @id @default(cuid())
+  name        String
+  email       String          @unique
+  affiliation String?
+  createdAt   DateTime        @default(now())
+  feedbacks   JudgeFeedback[]
+}
+
+model JudgeFeedback {
+  id          String   @id @default(cuid())
+  projectId   String
+  judgeId     String?
+  userId      String?
+  scoreOverride Float?
+  privateNotes String?
+  strengths    String?
+  weaknesses   String?
+  questions    String?
+  feedback     String?
+  createdAt    DateTime @default(now())
+  
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  judge       Judge?   @relation(fields: [judgeId], references: [id])
+  user        User?    @relation(fields: [userId], references: [id])
+}
+
+model AnalysisHistory {
+  id           String   @id @default(cuid())
+  projectId    String
+  version      Int
+  overallScore Float
+  scores       String   // JSON string of category breakdown
+  createdAt    DateTime @default(now())
+  
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
