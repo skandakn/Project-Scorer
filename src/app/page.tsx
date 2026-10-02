@@ -2,8 +2,10 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Navbar from '@/components/layout/Navbar';
 import EmergencyModal from '@/components/dashboard/EmergencyModal';
+import { useProject } from '@/lib/store/projectContext';
 import {
   Sparkles,
   ArrowRight,
@@ -25,7 +27,47 @@ import {
 } from 'lucide-react';
 
 export default function LandingPage() {
+  const router = useRouter();
+  const { addNewProject } = useProject();
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
+
+  // Hero Instant GitHub Analysis State
+  const [heroRepoUrl, setHeroRepoUrl] = useState('');
+  const [isHeroAnalyzing, setIsHeroAnalyzing] = useState(false);
+  const [heroError, setHeroError] = useState('');
+
+  const handleHeroAnalyze = async (overrideUrl?: string) => {
+    const url = (overrideUrl || heroRepoUrl).trim();
+    if (!url) {
+      setHeroError('Please enter a GitHub repository URL.');
+      return;
+    }
+
+    setHeroError('');
+    setIsHeroAnalyzing(true);
+
+    try {
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ githubUrl: url }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to analyze repository');
+      }
+
+      const data = await res.json();
+      addNewProject(data.project, data.evaluation);
+      router.push('/evaluation');
+    } catch (err: unknown) {
+      setIsHeroAnalyzing(false);
+      setHeroError(
+        err instanceof Error ? err.message : 'Analysis failed. Please verify the GitHub URL.'
+      );
+    }
+  };
 
   const toggleFaq = (idx: number) => {
     setActiveFaq(activeFaq === idx ? null : idx);
@@ -89,26 +131,90 @@ export default function LandingPage() {
             </h1>
 
             <p className="text-base sm:text-xl text-gray-300 font-normal leading-relaxed max-w-2xl mx-auto">
-              AI-powered project evaluation, technical review, UI/UX analysis, pitch coaching, and
-              personalized improvement recommendations before you face the judging panel.
+              Paste your public GitHub repository link to get an instant <span className="text-cyan-400 font-semibold">0–100 HackScore</span>, technical code review, skeptical judge objections, and prioritized improvement roadmap.
             </p>
 
-            {/* CTAs */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-              <Link
-                href="/submit"
-                className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold text-sm shadow-xl shadow-cyan-500/25 transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
-              >
-                <span>Analyze My Project</span>
-                <ArrowRight className="w-4 h-4" />
-              </Link>
+            {/* Instant GitHub Input Bar */}
+            <div className="max-w-2xl mx-auto pt-3">
+              <div className="p-2 sm:p-2.5 rounded-2xl bg-slate-900/90 border border-cyan-500/40 shadow-xl shadow-cyan-500/15 flex flex-col sm:flex-row items-center gap-2">
+                <div className="relative flex-1 w-full">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-cyan-400 pointer-events-none">
+                    <Code2 className="w-5 h-5" />
+                  </div>
+                  <input
+                    type="text"
+                    value={heroRepoUrl}
+                    onChange={(e) => setHeroRepoUrl(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleHeroAnalyze();
+                      }
+                    }}
+                    placeholder="https://github.com/username/project-repo"
+                    disabled={isHeroAnalyzing}
+                    className="w-full pl-11 pr-4 py-3 rounded-xl bg-slate-950/80 border border-white/10 text-white placeholder-gray-500 text-sm font-mono focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 outline-none transition-all"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleHeroAnalyze()}
+                  disabled={isHeroAnalyzing}
+                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-extrabold text-sm shadow-lg shadow-cyan-500/25 transition-all flex items-center justify-center gap-2 shrink-0 disabled:opacity-50"
+                >
+                  {isHeroAnalyzing ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                      <span>Analyzing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-4 h-4 fill-current" />
+                      <span>⚡ Analyze Repo</span>
+                    </>
+                  )}
+                </button>
+              </div>
 
+              {/* Sample Repo Chips */}
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-3">
+                <span className="text-xs text-gray-400">Try sample:</span>
+                {[
+                  { label: 'skandakn/Project-Scorer', url: 'https://github.com/skandakn/Project-Scorer' },
+                  { label: 'facebook/react', url: 'https://github.com/facebook/react' },
+                  { label: 'vercel/next.js', url: 'https://github.com/vercel/next.js' },
+                  { label: 'shadcn/ui', url: 'https://github.com/shadcn-ui/ui' },
+                ].map((sample) => (
+                  <button
+                    key={sample.url}
+                    type="button"
+                    onClick={() => {
+                      setHeroRepoUrl(sample.url);
+                      handleHeroAnalyze(sample.url);
+                    }}
+                    disabled={isHeroAnalyzing}
+                    className="px-2.5 py-1 rounded-lg bg-slate-900/60 hover:bg-slate-800 text-xs text-gray-300 hover:text-cyan-300 border border-white/10 hover:border-cyan-500/30 transition-all font-mono"
+                  >
+                    {sample.label}
+                  </button>
+                ))}
+              </div>
+
+              {heroError && (
+                <div className="mt-3 text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-xl text-center">
+                  {heroError}
+                </div>
+              )}
+            </div>
+
+            {/* Sub-actions */}
+            <div className="flex items-center justify-center gap-4 pt-2">
               <Link
                 href="/dashboard"
-                className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-slate-900/80 hover:bg-slate-800 text-gray-200 font-bold text-sm border border-white/10 hover:border-white/20 transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
+                className="text-xs text-gray-400 hover:text-cyan-300 flex items-center gap-1.5 transition-colors"
               >
                 <PlayCircle className="w-4 h-4 text-cyan-400" />
-                <span>Try Demo Projects</span>
+                <span>Or explore interactive demo projects (AuraMed, EcoSort) &rarr;</span>
               </Link>
             </div>
           </div>

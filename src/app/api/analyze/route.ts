@@ -1,20 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runFullProjectAnalysis } from '@/lib/analysis/projectAnalyzer';
+import { quickAnalyzeGitHubRepo } from '@/lib/analysis/quickAnalyze';
 import { ProjectData } from '@/lib/types';
 import prisma from '@/lib/db';
 
 export async function POST(req: NextRequest) {
   try {
-    const project: ProjectData = await req.json();
+    const body = await req.json();
 
-    if (!project.name || !project.problemStatement || !project.description) {
-      return NextResponse.json(
-        { error: 'Project name, problem statement, and description are required.' },
-        { status: 400 }
-      );
+    let project: ProjectData;
+    let evaluation;
+
+    // Case 1: 1-Click GitHub Repository Analysis
+    if (body.githubUrl && typeof body.githubUrl === 'string') {
+      const quickResult = await quickAnalyzeGitHubRepo(body.githubUrl, body.overrides);
+      project = quickResult.project;
+      evaluation = quickResult.evaluation;
+    } else {
+      // Case 2: Full Manual Project Submission
+      project = body as ProjectData;
+
+      if (!project.name || !project.problemStatement || !project.description) {
+        return NextResponse.json(
+          { error: 'Project name, problem statement, and description are required.' },
+          { status: 400 }
+        );
+      }
+
+      evaluation = await runFullProjectAnalysis(project);
     }
-
-    const evaluation = await runFullProjectAnalysis(project);
 
     // Save to Database if Prisma is connected
     try {
@@ -93,7 +107,7 @@ export async function POST(req: NextRequest) {
       // Prisma write error handled gracefully; return evaluation result
     }
 
-    return NextResponse.json({ success: true, evaluation });
+    return NextResponse.json({ success: true, project, evaluation });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Analysis failed';
     return NextResponse.json({ error: message }, { status: 500 });
