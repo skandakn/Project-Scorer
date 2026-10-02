@@ -77,11 +77,58 @@ export interface TechnicalAudit {
     openIssues: number;
     primaryLanguage: string;
     languages: Record<string, number>;
+    languagesDetailed?: { name: string; bytes: number; percentage: number }[];
     hasReadme: boolean;
+    readmePreview?: string;
+    readmeLength?: number;
+    readmeHeadings?: string[];
+    isDefaultReadme?: boolean;
     hasTests: boolean;
+    testFrameworks?: string[];
     hasCiCd: boolean;
+    ciCdWorkflows?: string[];
     commitCount?: number;
     repoName?: string;
+    owner?: string;
+    ownerAvatar?: string;
+    description?: string;
+    license?: string;
+    defaultBranch?: string;
+    createdAt?: string;
+    pushedAt?: string;
+    sizeKb?: number;
+    homepage?: string;
+    topics?: string[];
+    commits?: {
+      sha: string;
+      message: string;
+      author: string;
+      avatar?: string;
+      date: string;
+      url?: string;
+    }[];
+    contributors?: {
+      login: string;
+      avatar: string;
+      contributions: number;
+      url: string;
+    }[];
+    dependencies?: {
+      production: Record<string, string>;
+      dev: Record<string, string>;
+      scripts: Record<string, string>;
+    };
+    database?: {
+      orm?: string;
+      provider?: string;
+      models?: string[];
+    };
+    fileStats?: {
+      totalFiles: number;
+      codeFiles: number;
+      routesCount: number;
+      componentsCount: number;
+    };
   };
 }
 

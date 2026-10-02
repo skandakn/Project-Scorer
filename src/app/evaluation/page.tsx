@@ -23,6 +23,12 @@ import {
   FileText,
   Mic,
   ArrowRight,
+  GitBranch,
+  Star,
+  GitFork,
+  GitCommit,
+  FileCode2,
+  ExternalLink,
 } from 'lucide-react';
 
 export default function EvaluationPage() {
@@ -38,6 +44,8 @@ export default function EvaluationPage() {
       </div>
     );
   }
+
+  const gh = activeEvaluation.technicalAudit.gitHubData;
 
   return (
     <div className="min-h-screen flex flex-col bg-[#070a13]">
@@ -86,6 +94,68 @@ export default function EvaluationPage() {
               </Link>
             </div>
           </div>
+
+          {/* Verified Empirical GitHub Signals Card */}
+          {gh && (
+            <div className="p-4 sm:p-5 rounded-2xl bg-slate-900/80 border border-cyan-500/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                {gh.ownerAvatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={gh.ownerAvatar}
+                    alt={gh.owner || 'Owner'}
+                    className="w-11 h-11 rounded-full border border-cyan-500/40 object-cover"
+                  />
+                ) : (
+                  <FileCode2 className="w-9 h-9 text-cyan-400" />
+                )}
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-cyan-400">
+                      Empirical Signals Verified from GitHub API
+                    </span>
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  </div>
+                  <h4 className="text-base font-black text-white">{gh.repoName || activeProject.name}</h4>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400 mt-0.5">
+                    <span className="font-mono text-cyan-300">{gh.primaryLanguage}</span>
+                    <span>•</span>
+                    <span>{gh.stars} stars</span>
+                    <span>•</span>
+                    <span>{gh.forks} forks</span>
+                    <span>•</span>
+                    <span>{gh.commitCount || 0} commits</span>
+                    <span>•</span>
+                    <span>{gh.fileStats?.totalFiles || 0} files</span>
+                    {gh.isDefaultReadme && (
+                      <span className="text-amber-400 font-semibold">• README is default boilerplate</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-stretch md:self-auto">
+                <Link
+                  href="/technical-audit"
+                  className="w-full md:w-auto px-4 py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                >
+                  <span>Inspect Code & Manifest</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+                {activeProject.githubUrl && (
+                  <a
+                    href={activeProject.githubUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10 transition-colors"
+                    title="Open on GitHub"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Overall Assessment Score Indicator */}
           <ScoreGauge
